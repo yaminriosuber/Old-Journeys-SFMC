@@ -1,0 +1,53 @@
+SELECT op.*
+    ,tr1.Country_Id__c AS country_Id__c
+    ,tr1.Region__c
+    ,tr1.City_id__c AS City_id__c
+FROM (
+        SELECT op.*
+            ,ac.Name AS Company
+            ,ac.re_service_area__c
+        FROM ENT.[Account_Salesforce_5] as ac
+        INNER JOIN ENT.[EATS_ONBOARDING__C_SALESFORCE_1] as ob on ac.id=ob.account__c
+        INNER JOIN ENT.[Opportunity_Salesforce_1] op ON op.id = ob.opportunity__c
+        WHERE op.StageName = 'Closed Won'
+            AND op.LeadSource IN (
+                'Inbound Self Sign-Up'
+                ,'Inbound: Self Sign-Up'
+                ,'Inbound: Website'
+                )
+            AND Opp_ID__c is not null
+            AND op.UE_Service_Country__c IN ('Argentina','Chile','Colombia','Costa Rica','Dominican Republic','Ecuador','El Salvador','Guatemala','Panama','Peru','México','Bogota')
+            AND CAST(op.CloseDate AS DATE) >= cast(DATEADD(DAY, -1, GETDATE()) as date)
+            AND ac.ParentId <> '001o0000016X5XaAAK' 
+            AND (ac.re_service_area__c NOT IN ('Gatineau', 'Montreal', 'Puerto Rico', 'Quebec City', 'San Juan', 'Sherbrooke','Trois-Rivieres') OR ac.re_service_area__c IS NULL)
+            AND ac.Name not like '%Subway%'    
+        
+        UNION ALL
+
+        
+        SELECT op.*
+            ,ac.Name AS Company
+            ,ac.re_service_area__c
+        FROM ENT.[Account_Salesforce_5] as ac
+        INNER JOIN ENT.[EATS_ONBOARDING__C_SALESFORCE_1] as ob on ac.id=ob.account__c
+        INNER JOIN ENT.[Opportunity_Salesforce_1] op ON op.id = ob.opportunity__c
+        WHERE op.StageName = 'Closed Lost'
+            AND op.LeadSource IN (
+                'Inbound Self Sign-Up'
+                ,'Inbound: Self Sign-Up'
+                ,'Inbound: Website'
+                )
+            AND (op.Closed_Lost_Reason_Details__c NOT LIKE '%postmates%' or op.Closed_Lost_Reason_Details__c is null)
+            AND Opp_ID__c is not null
+            AND op.UE_Service_Country__c IN ('Argentina','Chile','Colombia','Costa Rica','Dominican Republic','Ecuador','El Salvador','Guatemala','Panama','Peru','México','Bogota')
+            AND CAST(op.CloseDate AS DATE) >= cast(DATEADD(DAY, -1, GETDATE()) as date)
+            AND ac.ParentId <> '001o0000016X5XaAAK' 
+            AND (ac.re_service_area__c NOT IN ('Gatineau', 'Montreal', 'Puerto Rico', 'Quebec City', 'San Juan', 'Sherbrooke','Trois-Rivieres') OR ac.re_service_area__c IS NULL)
+            AND ac.Name not like '%Subway%'
+
+    ) op
+LEFT JOIN ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = op.UE_Service_Country__c AND tr1.[City_Name__c] = op.re_service_area__c
+LEFT JOIN Global_Opportunity_CW_CL_Log glog ON op.Opp_ID__c=glog.Opp_ID__c
+LEFT JOIN LATAM_Opportunity_CW_CL_Log rlog ON op.Opp_ID__c=rlog.Opp_ID__c
+    WHERE   glog.Opp_ID__c is null
+            AND rlog.Opp_ID__c is null
