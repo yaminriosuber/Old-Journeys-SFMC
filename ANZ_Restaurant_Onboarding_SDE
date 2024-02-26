@@ -1,0 +1,87 @@
+SELECT DISTINCT ph.id AS PH_accountID
+    ,sf.id AS SF_accountID
+    ,opp.id AS opportunityID
+    ,opp.Primary_Contact_Email__c as EmailAddress
+    ,ob.id AS onboardingId
+    ,ob.Menu_Uploaded__c
+    ,ob.Menu_Uploaded_Date__c
+    ,sf.uuid__c as Telescope_UUID__c
+    ,ob.Menu_Audited__c 
+    ,ob.Menu_Audited_Date__c    
+    ,sf.Name
+    ,ob.Account_Status__c
+    ,ob.Account_Sub_Status__c
+    ,sf.Type
+    ,sf.CreatedDate
+    ,sf.EATS_First_Trip_Date__c
+    ,sf.First_Visible_Timestamp__c
+    ,sf.POS_System_if_other__c
+    ,sf.Record_Type__c
+    ,sf.Service_Country__c
+    ,sf.Business_Line__c
+    ,sf.RE_Business_Category__c
+    ,sf.Email__c
+    ,sf.Preferred_Language__c
+    ,sf.Named_Account__c AS SF_Named_Account__c
+    ,ph.Named_Account__c AS PA_Named_Account__c
+    ,sf.Tiers__c
+    ,sf.Territory__c
+    ,sf.Lead_Source__C
+    ,sf.Tax_Account_Number__c
+    ,sf.UE_Entity_Legal_Name__c
+    ,ob.Photography_Scheduled__c
+    ,ob.Photography_Scheduled_Date__c
+    ,opp.[Type] as Opportunity_Type
+    ,opp.Initial_Photography_Scheduled_Date__c
+    ,opp.Initial_Photography_Shoot_Date__c
+    ,opp.UET_Closed_Won_Date_Time__c
+    ,opp.Opportunity_Reason__c
+    ,case 
+        when sf.Service_Country__c = 'Australia' then 10
+        when sf.Service_Country__c= 'New Zealand' then 126
+        when ph.Service_Country__c = 'Australia' then 10
+        when ph.Service_Country__c= 'New Zealand' then 126
+        else 10
+    end as Country_Id__c
+    ,territory.Country__c
+    ,territory.City_ID__c
+    ,territory.City_Name__c
+    ,territory.Region__c
+    
+FROM ENT.[Opportunity_Salesforce_1] opp
+JOIN ENT.[EATS_Onboarding__c_Salesforce_1] ob ON ob.opportunity__c = opp.id
+JOIN ENT.[Account_Salesforce_5] sf ON sf.id = ob.Storefront__c
+JOIN ENT.[Account_Salesforce_5] ph ON ph.id = sf.parentid
+LEFT JOIN [ANZ_Restaurant_Onboarding_TrackingDE] tr ON ph.Id = tr.PH_accountID AND sf.Id = tr.SF_accountID AND opp.Id = tr.opportunityID AND ob.Id = tr.onboardingId 
+left join ENT.Territory__c_Salesforce territory
+    on sf.territory__c = territory.id
+where opp.Primary_Contact_Email__c IS NOT NULL
+    AND (
+            (opp.StageName = 'Closed Won' AND 
+             opp.UET_Closed_Won_Date_Time__c > dateadd(hh, -72, getdate()) AND
+             opp.GWAC_Allowed__c = 1) OR  
+            (ob.UUID_Generated_Date__c > dateadd(hh, -72, getdate()) AND
+             opp.GWAC_Allowed__c = 0)
+        )   
+    AND ob.Account_Status__c = 'Onboarding'
+    and (ob.ACCOUNT_SUB_STATUS__C is null
+        OR ob.ACCOUNT_SUB_STATUS__C != 'Onboarding Cancelled')
+    AND (sf.Service_Country__c IN ('Australia','New Zealand') OR
+        ph.Service_Country__c IN ('Australia','New Zealand')
+    )
+    AND ob.CreatedDate >= '2022-11-08'
+    AND tr.PH_accountID IS NULL
+    AND tr.SF_accountID IS NULL
+    AND tr.opportunityID IS NULL
+    AND tr.onboardingId IS NULL
+    AND ph.RE_Business_Category__c = 'Restaurant & Takeout'
+    AND sf.business_line__c IS NULL
+    AND sf.EATS_First_Trip_Date__c IS NULL
+        AND sf.id NOT IN (
+        SELECT storefront_id
+        FROM ENT.[storefront_exclusion_list]
+        )
+    AND (opp.Type = 'New Business'
+            Or
+        (Opp.type = 'Re-Negotiation' and opp.Opportunity_Reason__c = 'Reengagement')
+        )
