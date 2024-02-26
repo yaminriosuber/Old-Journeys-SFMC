@@ -1,0 +1,86 @@
+SELECT DISTINCT PH_ACCOUNT.id AS PH_accountID
+	,SF_ACCOUNT.id AS SF_accountID
+	,OPPORTUNITY.id AS opportunityID
+	,ONBOARDING.id AS onboardingId
+	,OPPORTUNITY.Primary_Contact_Email__c
+FROM ENT.[EATS_Onboarding__c_Salesforce_1] ONBOARDING
+LEFT JOIN ENT.[Opportunity_Salesforce_1] OPPORTUNITY ON ONBOARDING.opportunity__c = OPPORTUNITY.id
+LEFT JOIN ENT.[Account_Salesforce_5] PH_ACCOUNT ON ONBOARDING.account__c = PH_ACCOUNT.id
+LEFT JOIN ENT.[Account_Salesforce_5] SF_ACCOUNT ON ONBOARDING.Storefront__c = SF_ACCOUNT.id and SF_ACCOUNT.record_type__c='Storefront' 
+WHERE OPPORTUNITY.StageName = 'Closed Won'
+	AND ONBOARDING.UUID_Generated_Date__c > dateadd(day, - 7, getdate())
+	AND OPPORTUNITY.Type IN (
+		'New Business'
+		,'Additional Location'
+		)
+	AND OPPORTUNITY.UE_Service_Country__c IN ('United States','Canada')
+	AND PH_ACCOUNT.Account_Status__c = 'Onboarding'
+	AND PH_ACCOUNT.Account_Sub_Status__c != 'Onboarding Canceled'
+
+	AND PH_ACCOUNT.Point_of_Sale_System__c IS NULL
+	AND (PH_ACCOUNT.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or PH_ACCOUNT.Additional_Notes__c is null)
+	AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+	AND SF_ACCOUNT.business_line__c IS NULL
+	AND SF_ACCOUNT.type IN ('Brick & Mortar')
+	AND (
+		(
+			ONBOARDING.Delay_Detailed_Comments__c NOT LIKE '%Segment: ENT Wavelaunch%'
+			AND ONBOARDING.Delay_Detailed_Comments__c NOT LIKE '%wavelaunch%'
+			)
+		OR ONBOARDING.Delay_Detailed_Comments__c IS NULL
+		)
+	AND SF_ACCOUNT.id NOT IN (SELECT storefront_id FROM ent.storefront_exclusion_list)
+/* Previous code changed on feb 07, 2024
+SELECT DISTINCT PH_ACCOUNT.id AS PH_accountID
+	,SF_ACCOUNT.id AS SF_accountID
+	,OPPORTUNITY.id AS opportunityID
+	,ONBOARDING.id AS onboardingId
+	,PH_ACCOUNT.Primary_Contact_Email__c
+	OPPORTUNITY.Primary_Contact_Email__c,
+FROM ENT.Opportunity_Salesforce_1 OPPORTUNITY
+JOIN ENT.EATS_Onboarding__c_Salesforce_1 ONBOARDING ON ONBOARDING.opportunity__c = OPPORTUNITY.id
+JOIN ENT.Account_Salesforce_5 SF_ACCOUNT ON SF_ACCOUNT.id = ONBOARDING.storefront__c
+	AND (
+		SF_ACCOUNT.type IN ('Brick & Mortar')
+		OR SF_ACCOUNT.RecordTypeId = '0121J000000yfYiQAI'
+		)
+JOIN ENT.Account_Salesforce_5 PH_ACCOUNT ON PH_ACCOUNT.id = SF_ACCOUNT.ParentId
+	AND (
+		PH_ACCOUNT.type IN ('Physical Location')
+		OR PH_ACCOUNT.RecordTypeId = '012o0000000n0YSAAY'
+		)
+LEFT JOIN ENT.[restaurant_onboarding_USCAN_Email1_Post-AH] a ON a.PH_accountID = PH_ACCOUNT.id
+	AND a.SF_accountID = SF_ACCOUNT.id
+	AND a.opportunityID = OPPORTUNITY.id
+	AND a.onboardingId = ONBOARDING.id
+WHERE OPPORTUNITY.StageName = 'Closed Won'
+	AND ONBOARDING.UUID_Generated_Date__c > dateadd(hh, - 72, getdate())
+	AND OPPORTUNITY.Type IN (
+		'New Business'
+		,'Additional Location'
+		)
+	AND PH_ACCOUNT.Account_Status__c = 'Onboarding'
+	AND PH_ACCOUNT.Account_Sub_Status__c != 'Onboarding Canceled'
+	AND PH_ACCOUNT.Service_Country__c IN (
+		'United States'
+		,'Canada'
+		)
+	AND PH_ACCOUNT.Point_of_Sale_System__c IS NULL
+	AND (PH_ACCOUNT.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or PH_ACCOUNT.Additional_Notes__c is null)
+	AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+	AND SF_ACCOUNT.business_line__c IS NULL
+	AND (
+		(
+			ONBOARDING.Delay_Detailed_Comments__c NOT LIKE '%Segment: ENT Wavelaunch%'
+			AND ONBOARDING.Delay_Detailed_Comments__c NOT LIKE '%wavelaunch%'
+			)
+		OR ONBOARDING.Delay_Detailed_Comments__c IS NULL
+		)
+	AND SF_ACCOUNT.id NOT IN (
+		SELECT storefront_id
+		FROM ent.storefront_exclusion_list
+		)
+	AND a.PH_accountID IS NULL
+	AND a.SF_accountID IS NULL
+	AND a.opportunityID IS NULL
+	AND a.onboardingId IS NULL*/
