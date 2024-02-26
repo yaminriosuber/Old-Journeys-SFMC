@@ -1,0 +1,43 @@
+SELECT plac.sf_email as email
+    , pla.physical_account_id
+    , sla.storefront_account_id
+    , pla.parentid
+    , sla.store_name
+    , pla.BillingStreet
+    , pla.BillingCity
+    , pla.BillingState
+    , pla.BillingPostalCode
+    , pla.BillingCountry
+    , t.country_id__c
+    , t.city_id__c
+    , 'LATAM' as Region__c
+    , pla.Account_Status
+    , pla.Account_Sub_Status
+    , sla.first_visible_timestamp_local
+    , pla.Preferred_Language__c
+    , pla.Point_of_Sale_System__c
+    , sla.fulfillment_types
+    , pla.Named_Account as Segment
+    , sla.EATS_First_Trip_Date__c
+    , o.Selected_Package__c
+FROM [Physical_Location_Account_Contact] plac
+INNER JOIN [Physical_Location_Account] pla on plac.physical_account_id = pla.physical_account_id
+INNER JOIN [Storefront_Location_Account] sla on sla.parentid = pla.physical_account_id
+INNER JOIN ENT.[Territory__c_Salesforce] t on t.id = pla.Territory__c
+LEFT JOIN ENT.[Opportunity_Salesforce_1] o on o.AccountId = pla.physical_account_id
+LEFT JOIN [VnFT LATAM Log] l
+    ON l.email = plac.sf_email
+    AND l.physical_account_id = pla.physical_account_id
+    AND l.storefront_account_id = sla.storefront_account_id
+WHERE (
+    (pla.Account_Status = 'Active' AND pla.Account_Status_Change_Date__c >= DATEADD(dd,-3,GETDATE()))
+    OR
+    sla.first_visible_timestamp_local >= DATEADD(dd,-3,GETDATE())
+)
+AND sla.EATS_First_Trip_Date__c IS NULL
+AND pla.Named_Account IN ('SMB','Mid-Market')
+AND t.country_id__c IN (22,25,36,42,51,52,54,69,113,134,74)
+AND sla.fulfillment_types NOT LIKE '%OVER_THE_TOP%'
+AND pla.RE_Business_Category__c NOT IN ('Alcohol','Convenience','Grocery','Grocery & Specialty Foods','Health and Pharmacy','Pharmacy')
+AND sla.account_type NOT IN ('Virtural Restaurant', 'Virtual Restaurant')
+AND l.email IS NULL
