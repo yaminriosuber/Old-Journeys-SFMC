@@ -1,0 +1,98 @@
+SELECT DISTINCT pa.id AS PH_accountID
+	,sfa.id AS SF_accountID
+	,opp.id AS opportunityID
+    ,opp.Primary_Contact_Email__c as EmailAddress
+	,ob.id AS onboardingId
+	/*Onboarding attributes*/
+	,ob.Menu_Uploaded__c
+	,ob.Menu_Uploaded_Date__c
+	,ob.Telescope_UUID__c
+    /*ph account attributes - decided to go with SF attributes*/
+    ,sfa.Name
+    ,sfa.Account_Status__c
+    ,sfa.Account_Sub_Status__c
+    ,sfa.Type
+    ,sfa.CreatedDate
+    ,sfa.EATS_First_Trip_Date__c
+    ,sfa.First_Visible_Timestamp__c
+    ,sfa.POS_System_if_other__c
+    ,sfa.Record_Type__c
+    ,sfa.Service_Country__c
+    ,sfa.Business_Line__c
+    ,sfa.RE_Business_Category__c
+    ,sfa.Email__c
+    ,sfa.Preferred_Language__c
+    ,sfa.Named_Account__c AS SF_Named_Account
+    ,pa.Named_Account__c AS PA_Named_Account
+    ,sfa.Tiers__c
+    ,sfa.Territory__c
+    ,sfa.Lead_Source__C
+    ,sfa.Tax_Account_Number__c
+    ,sfa.UE_Entity_Legal_Name__c
+    /*onboarding lookup attributes*/ 
+    ,sfa.Photography_Scheduled__c
+    ,sfa.Photography_Scheduled_Date__c
+    /*opportunity lookup attributes*/
+    ,opp.Initial_Photography_Scheduled_Date__c
+    ,opp.Initial_Photography_Shoot_Date__c
+    ,opp.UET_Closed_Won_Date_Time__c
+    /*territory lookup attributes*/
+    ,sfa.Country_Id__c
+    ,sfa.Country__c
+    ,sfa.City_ID__c
+    ,sfa.City_Name__c
+    ,sfa.Region__c
+FROM ENT.[Opportunity_Salesforce_1] opp
+INNER JOIN ENT.[EATS_Onboarding__c_Salesforce_1] ob ON ob.opportunity__c = opp.id
+INNER JOIN [Storefront_Account_Staging] sfa ON ob.storefront__c = sfa.id
+INNER JOIN [Physical_Account_Staging] pa ON opp.accountid = pa.id
+LEFT JOIN [LATAM_Restaurant_Onboarding_TrackingDE] tr ON pa.Id = tr.PH_accountID AND sfa.Id = tr.SF_accountID AND opp.Id = tr.opportunityID AND ob.Id = tr.onboardingId 
+WHERE opp.Primary_Contact_Email__c IS NOT NULL
+    AND (
+            (opp.StageName = 'Closed Won' AND 
+             opp.UET_Closed_Won_Date_Time__c > dateadd(hh, - 72, getdate()) AND
+             opp.GWAC_Allowed__c = 1) OR  
+            (ob.UUID_Generated_Date__c > dateadd(hh, - 72, getdate()) AND
+             opp.GWAC_Allowed__c = 0) /*change to dateadd(hh, - 72, getdate()) after testing*/
+    	)   
+    AND opp.Type NOT IN ('Pilot', 'Pickup Pilot') /*opp.Type = 'New Business'*/
+    AND pa.Account_Status__c = 'Onboarding'
+	AND pa.Account_Sub_Status__c != 'Onboarding Canceled'
+    AND sfa.EATS_First_Trip_Date__c IS NULL
+    AND sfa.business_line__c IS NULL
+    /*AND (pa.POS_System_if_other__c IS NULL OR pa.Point_of_Sale_System__c IS NULL)*/
+	AND pa.Service_Country__c IN (
+                            		'Chile'
+                                    ,'Colombia'
+                                    ,'Costa Rica'
+                                    ,'Dominican Republic'
+                                    ,'Ecuador'
+                                    ,'El Salvador'
+                                    ,'Guatemala'
+                                    ,'Mexico'
+                                    ,'Panama'
+                                    ,'Puerto Rico'
+                                    ,'México'
+                                    )
+    AND (pa.Named_Account__c NOT IN ('Enterprise','Strategic') OR 
+        sfa.Named_Account__c NOT IN ('Enterprise','Strategic'))
+	AND sfa.id NOT IN (
+		SELECT storefront_id
+		FROM ENT.[storefront_exclusion_list]
+		)
+	AND tr.PH_accountID IS NULL
+	AND tr.SF_accountID IS NULL
+	AND tr.opportunityID IS NULL
+	AND tr.onboardingId IS NULL
+	
+	/*AND (
+		opp.Delivery_Features__c NOT LIKE '%OTT%'
+		OR opp.Delivery_Features__c IS NULL
+		)
+	AND (
+		(
+			ob.Delay_Detailed_Comments__c NOT LIKE '%Segment: ENT Wavelaunch%'
+			AND ob.Delay_Detailed_Comments__c NOT LIKE '%wavelaunch%'
+			)
+		OR ob.Delay_Detailed_Comments__c IS NULL
+		)*/	
