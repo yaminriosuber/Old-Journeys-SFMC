@@ -1,0 +1,53 @@
+    SELECT op.*
+    ,tr1.Country_Id__c AS country_Id__c
+    ,tr1.Region__c
+    ,tr1.City_id__c AS City_id__c
+FROM (
+        SELECT op.*
+            ,ac.re_service_area__c
+            ,ac.Name AS Company
+        FROM ENT.[Account_Salesforce_5] as ac
+        INNER JOIN ENT.[EATS_ONBOARDING__C_SALESFORCE_1] as ob on ac.id=ob.account__c
+        INNER JOIN ENT.[Opportunity_Salesforce_1] op ON op.id = ob.opportunity__c
+        WHERE op.Docusign_Sent__c = 1
+            AND op.LeadSource IN (
+                'Inbound Self Sign-Up'
+                ,'Inbound: Self Sign-Up'
+                ,'Inbound: Website')
+            AND (op.Closed_Lost_Reason_Details__c NOT LIKE '%postmates%' or op.Closed_Lost_Reason_Details__c is null)
+            AND DateDiff(DD, Agreement_Signed__c, Getdate()) <=1 /*opp updated last day*/
+            AND Opp_ID__c is not null
+            AND op.UE_Service_Country__c IN (
+                                            'South Africa'
+                                            ,'United Kingdom'
+                                            ,'Italy'
+                                            ,'Guadeloupe'
+                                            ,'Grocery'
+                                            ,'Netherlands'
+                                            ,'France'
+                                            ,'Spain'
+                                            ,'Martinique'
+                                            ,'Convenience'
+                                            ,'Germany'
+                                            ,'Liquor Store'
+                                            ,'Pharmacy'
+                                            ,'Portugal'
+                                            ,'Poland'
+                                            ,'Ireland'
+                                            ,'Belgium'
+                                            ,'Switzerland'
+                                            ,'Reunion'
+                                            ,'Sweden'
+                                            ,'Kenya'
+                                            )
+            AND (ac.re_service_area__c NOT IN ('Gatineau'
+                                                ,'Montreal'
+                                                ,'Sherbrooke'
+                                                ,'Quebec City'
+                                                ,'Trois-Rivieres'
+                                                ) OR ac.re_service_area__c IS NULL)    
+    ) op
+LEFT JOIN ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = op.UE_Service_Country__c AND tr1.[City_Name__c] = op.re_service_area__c
+LEFT JOIN [Global_Opportunity_Agreement_Received_Log] glog ON op.Opp_ID__c=glog.Opp_ID__c
+LEFT JOIN [EMEA_Opportunity_Agreement_Received_Log] rlog ON op.Opp_ID__c=rlog.Opp_ID__c
+    WHERE   glog.Opp_ID__c is null AND rlog.Opp_ID__c is null
