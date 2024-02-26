@@ -1,0 +1,68 @@
+SELECT DISTINCT 
+a0.uuid__c,
+a1.id as AccountID, 
+ob.id as Eats_Onboarding_ID,
+o.CloseDate as cw_date,
+a1.name as Account_name,
+o.primary_contact_email__c,
+a0.Email__c,
+a1.tax_account_number__c,
+ob.Scheduled_Go_Live_Date__c,
+ob.delay_detailed_comments__c,
+ob.Tablet_Tracking_Number__c,
+ob.Onboarding_Completed_Date__c,
+ob.Account_Sub_Status__c,
+o.type as Type,
+a1.phone AS Phone,
+ob.UUID_Generated_Date__c,
+ob.crm_email_activity_log__c, 
+a0.First_Visible_Timestamp__c 
+
+FROM ent.EATS_Onboarding__c_Salesforce_1 ob
+LEFT JOIN ent.Opportunity_Salesforce_1 o on o.id=ob.opportunity__c
+LEFT JOIN ent.Account_Salesforce_5 a0 ON ob.storefront__c=a0.id
+LEFT JOIN ent.Account_Salesforce_5 a1 ON ob.account__c=a1.id
+
+WHERE 1=1 
+/*ob*/
+AND (ob.crm_email_activity_Log__c NOT LIKE '%Comm Sent: Live%' OR ob.crm_email_activity_Log__c IS NULL)
+AND (ob.crm_email_activity_Log__c  NOT LIKE '%Omit Comms%'  OR ob.crm_email_activity_Log__c  IS NULL)
+AND (ob.crm_email_activity_Log__c  NOT LIKE '%GL_Rest_OB%' OR ob.crm_email_activity_Log__c  IS NULL)
+AND (ob.crm_email_activity_Log__c  NOT LIKE '%live%' OR ob.crm_email_activity_Log__c  IS NULL)
+AND ob.crm_email_activity_Log__c LIKE '%welcome%' 
+AND (ob.delay_detailed_comments__c <> 'Segment: ENT wavelaunch' OR  ob.delay_detailed_comments__c  IS NULL)
+  /*o*/
+AND CAST(o.CloseDate AS DATE) > DATEADD(DAY, -60, GETDATE())
+AND o.type IN ('New Business', 'Additional Location')
+AND (o.important_handoff_information__c  NOT LIKE '%nocomm%' OR o.important_handoff_information__c IS  NULL )
+AND (o.important_handoff_information__c  NOT LIKE '%nocomm1%' OR o.important_handoff_information__c IS  NULL )
+AND (o.important_handoff_information__c  NOT LIKE '%nocomm2%' OR o.important_handoff_information__c IS  NULL )
+AND (o.important_handoff_information__c  NOT LIKE '%nocomm3%' OR o.important_handoff_information__c IS  NULL )
+AND (o.x3p_variant__c <> 'Pick, Pack, Pay' OR  o.x3p_variant__c IS  NULL)
+AND o.StageName = 'Closed Won'
+  /*a0*/
+AND a0.uuid__c IS NOT NULL
+AND a0.AccountCaseSafeID__c IS NOT NULL
+AND a0.EATS_First_Trip_Date__c IS NULL
+AND CAST(a0.First_Visible_Timestamp__c  AS DATE) >= DATEADD(DAY, -11, GETDATE())
+  /*a1*/
+AND (a1.pos_system_if_other__c IS NOT NULL OR a1.Point_of_Sale_System__c IS NOT NULL) 
+AND (a1.name NOT LIKE '%mcdonald%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%starbucks%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%7-Eleve%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%Taco Bell%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%SUGARFISH%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%KazuNori%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%Hiho%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%UOVO%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%CVS%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%howlin'' ray''s%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%Chipotle%' OR a1.name IS  NULL)
+AND (a1.name NOT LIKE '%Domino''s%' OR a1.name is NULL)
+AND a1.named_account__c='SMB'
+AND a1.account_status__c = 'Onboarding'
+AND a1.service_country__c IN ('United States', 'Canada') 
+AND (a1.billingcountry <> 'Puerto Rico' OR a1.billingcountry IS  NULL)
+AND (a1.re_service_area__c NOT IN ('Gatineau', 'Montreal', 'Puerto Rico', 'Quebec City', 'San Juan', 'Sherbrooke','Trois-Rivieres') OR a1.re_service_area__c IS NULL) 
+AND ( a1.preferred_Language__c = 'English' OR  a1.preferred_Language__c IS NULL)
+AND (a1.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or a1.Additional_Notes__c is null)
