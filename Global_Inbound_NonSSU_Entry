@@ -1,0 +1,83 @@
+Select nonssu.*
+FROM
+	(	Select ld.*
+			,tr1.Region__c
+			,tr1.Country_Id__c AS country_Id__c
+			,tr2.City_id__c AS City_id__c
+		FROM ENT.[Lead_Salesforce_3] ld
+		Left Join ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = ld.Country AND tr1.Country_Id__c IS NOT NULL
+		Left Join ENT.[Territory__c_Salesforce] tr2 ON tr2.[Country__c] = ld.Country AND tr2.[City_Name__c] = ld.City
+		Left Join [Inbound_Funnel_Exclusions] excl ON ld.ConvertedAccountId = excl.Account_Id 
+		Where DateDiff(DD,ld.createddate,getdate()) <= 1
+		AND (ld.Eligible_for_Self_Sign_Up__c IS NULL OR ld.Eligible_for_Self_Sign_Up__c = 'No')
+		AND ld.Status NOT IN ('Unqualified')
+		AND ld.LeadSource IN ('Inbound: Website','Inbound: Self Sign-Up') 
+		AND (ld.Lead_Sub_Status__c IS NULL OR 
+		          ld.Lead_Sub_Status__c NOT IN ('Out of Geofence', 'No Use Case for any Uber Product', 'Duplicate', 'Incomplete Data'))
+		AND ld.Named_Account__c IN ('SMB', 'Mid-Market', 'Enterprise')
+		/*AND (
+			ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Agreement Signed%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Menu Collected%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Hours Collected%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Bank Info Collected%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Tax Info Collected%'
+			)*/
+		AND ld.Email IS NOT NULL
+		AND excl.Account_Id IS NULL
+		AND ld.SSU_Franchise__c = 0
+		AND ld.Country NOT IN ('Argentina','Bolivia','Brazil','Colombia','Gatineau','Hong Kong','Montreal','Paraguay','Puerto Rico','Quebec City','San Juan','Sherbrooke','Trois-Rivieres')
+		AND ld.RE_Service_Area__c NOT IN ('Gatineau','Montreal','Sherbrooke','Quebec City','Trois-Rivieres','Puerto Rico','San Juan')
+		AND ld.Country IN ('United States','Canada')
+
+		UNION ALL
+
+		/*ALL Other Regions*/
+		Select ld.*
+			,tr1.Region__c
+			,tr1.Country_Id__c AS country_Id__c
+			,tr2.City_id__c AS City_id__c
+		FROM ENT.[Lead_Salesforce_3] ld
+		Left Join ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = ld.Country AND tr1.Country_Id__c IS NOT NULL
+		Left Join ENT.[Territory__c_Salesforce] tr2 ON tr2.[Country__c] = ld.Country AND tr2.[City_Name__c] = ld.City
+		Left Join [Inbound_Funnel_Exclusions] excl ON ld.ConvertedAccountId = excl.Account_Id 
+		Where DateDiff(DD,ld.createddate,getdate()) <= 1
+		AND (ld.Eligible_for_Self_Sign_Up__c IS NULL OR ld.Eligible_for_Self_Sign_Up__c = 'No')
+		AND ld.Status NOT IN ('Unqualified') 
+		AND ld.LeadSource IN ('Inbound: Website','Inbound: Self Sign-Up') 
+		AND (ld.Lead_Sub_Status__c IS NULL OR 
+		          ld.Lead_Sub_Status__c NOT IN ('Out of Geofence', 'No Use Case for any Uber Product', 'Duplicate', 'Incomplete Data'))
+		AND ld.Named_Account__c IN ('SMB', 'Mid-Market', 'Enterprise')
+		/*AND (
+			ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Agreement Signed%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Menu Collected%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Hours Collected%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Bank Info Collected%'
+			AND ld.OB_Hub_Progress_Timestamps__c NOT LIKE '%Tax Info Collected%'
+			)*/
+		AND ld.Email IS NOT NULL
+		AND excl.Account_Id IS NULL
+		AND ld.Country NOT IN ('United States','Canada','Argentina','Bolivia','Brazil','Colombia','Gatineau','Hong Kong','Montreal','Paraguay','Puerto Rico','Quebec City','San Juan','Sherbrooke','Trois-Rivieres')
+		AND ld.RE_Service_Area__c NOT IN ('Gatineau','Montreal','Sherbrooke','Quebec City','Trois-Rivieres','Puerto Rico','San Juan')
+	) nonssu
+Where NOT EXISTS (Select Id 
+                        FROM [Global_Inbound_NonSSU_Log] log
+                    Where nonssu.Id = log.Id) 
+/*Excluding old logs*/
+AND NOT EXISTS (Select Id 
+                        FROM [USCAN_Inbound_Funnel_Log] uscan
+                    Where nonssu.Id = uscan.Id) 
+AND NOT EXISTS (Select Id 
+                        FROM [APAC_Inbound_Funnel_Log] apac
+                    Where nonssu.Id = apac.Id) 
+AND NOT EXISTS (Select Id 
+                        FROM [EMEA_Inbound_Funnel_Log] emea
+                    Where nonssu.Id = emea.Id) 
+AND NOT EXISTS (Select Id 
+                        FROM [LATAM_Inbound_Funnel_Log] latam
+                    Where nonssu.Id = latam.Id)                 
+
+/*Action items if agreed to merge all journeys
+Create Global Entry and Log DE
+Update AMPSCript to reference new Log DE
+Add tracking code snippet
+*/
