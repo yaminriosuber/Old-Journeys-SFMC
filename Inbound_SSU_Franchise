@@ -1,0 +1,27 @@
+Select op.*, tr1.Country_Id__c AS country_Id__c,tr1.Region__c, tr2.City_id__c AS City_id__c, ac.Name as Company
+FROM
+	(
+		Select a.*,ld.Telescope_UUID__c
+		FROM ENT.[Opportunity_Salesforce_1] a
+		Inner Join ENT.[Lead_Salesforce_3] ld ON a.Id = ld.ConvertedOpportunityId
+		Where a.StageName = 'Closed Won'
+		AND a.LeadSource IN ('Inbound Self Sign-Up','Inbound: Self Sign-Up','Inbound: Website')
+		AND DateDiff(DD,Cast(a.CloseDate AS Date),Getdate()) <= 1
+		AND ld.SSU_Franchise__c = 1
+		AND ld.RE_Service_Area__c NOT IN ('Gatineau','Montreal','Sherbrooke','Quebec City','Trois-Rivieres','Puerto Rico','San Juan')
+		
+	) op
+Inner Join ENT.[Contact_Salesforce_1] cnt ON cnt.Id = op.New_Primary_Contact__c AND cnt.Email = op.Primary_Contact_Email__c
+Left Join ENT.[Account_Salesforce_5] ac ON op.AccountId = ac.Id
+Left Join ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = cnt.MailingCountry AND tr1.Country_Id__c IS NOT NULL
+Left Join ENT.[Territory__c_Salesforce] tr2 ON tr2.[Country__c] = cnt.MailingCountry AND tr2.[City_Name__c] = cnt.MailingCity
+Where cnt.MailingCountry IN ('United States','Canada')
+AND (ac.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or ac.Additional_Notes__c is null)
+AND op.Opp_ID__c NOT IN (Select l.[Opp_ID__c] 
+                            FROM [US_Opportunity_CW_Subway_Log] l
+                            
+                         UNION
+                         
+                         Select l.[Opp_ID__c] 
+                            FROM [USCAN_Inbound_SSU_Franchise_Log] l    
+                            )
