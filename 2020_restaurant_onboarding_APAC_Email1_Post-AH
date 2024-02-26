@@ -1,0 +1,66 @@
+SELECT DISTINCT PH_ACCOUNT.id AS PH_accountID
+	,SF_ACCOUNT.id AS SF_accountID
+	,OPPORTUNITY.id AS opportunityID
+	,ONBOARDING.id AS onboardingId
+FROM ENT.[EATS_Onboarding__c_Salesforce_1] ONBOARDING
+LEFT JOIN ENT.[Opportunity_Salesforce_1] OPPORTUNITY ON ONBOARDING.opportunity__c = OPPORTUNITY.id
+LEFT JOIN ENT.[Account_Salesforce_5] PH_ACCOUNT ON ONBOARDING.account__c = PH_ACCOUNT.id
+LEFT JOIN ENT.[Account_Salesforce_5] SF_ACCOUNT ON ONBOARDING.Storefront__c = SF_ACCOUNT.id and SF_ACCOUNT.record_type__c='Storefront' 
+WHERE OPPORTUNITY.StageName = 'Closed Won'
+	AND ONBOARDING.UUID_Generated_Date__c > dateadd(day, -7, getdate())
+	AND (OPPORTUNITY.Type NOT IN ('Re-Negotiation', 'Upsell') OR OPPORTUNITY.Type IS NULL)
+	AND PH_ACCOUNT.Account_Status__c	= 'Onboarding'
+	AND PH_ACCOUNT.Account_Sub_Status__c != 'Onboarding Canceled'
+	AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+	AND (
+		    (PH_ACCOUNT.Service_Country__c IN ('Japan', 'Taiwan') AND PH_ACCOUNT.Named_Account__c NOT IN ('Enterprise', 'Strategic'))
+		    OR
+		    (PH_ACCOUNT.Service_Country__c = 'Sri Lanka' AND PH_ACCOUNT.Named_Account__c != 'Grocery')
+		)
+	AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+	AND SF_ACCOUNT.type IN ('Brick & Mortar')
+	AND SF_ACCOUNT.business_line__c IS NULL
+
+/*Previous code modified on Feb 7, 2024
+SELECT DISTINCT
+    PH_ACCOUNT.id AS PH_accountID,
+    SF_ACCOUNT.id AS SF_accountID,
+    OPPORTUNITY.id AS opportunityID,
+    ONBOARDING.id AS onboardingId
+FROM ENT.Opportunity_Salesforce_1 OPPORTUNITY
+JOIN ENT.EATS_Onboarding__c_Salesforce_1 ONBOARDING 
+       ON ONBOARDING.opportunity__c = OPPORTUNITY.id
+
+JOIN ENT.Account_Salesforce_5 SF_ACCOUNT 
+       ON SF_ACCOUNT.id = ONBOARDING.storefront__c
+       AND (
+           SF_ACCOUNT.type in ('Brick & Mortar')
+        OR SF_ACCOUNT.record_type__c = 'Storefront'
+       )
+
+JOIN ENT.Account_Salesforce_5 PH_ACCOUNT
+       ON PH_ACCOUNT.id = OPPORTUNITY.accountid
+       AND (
+           PH_ACCOUNT.type IN ('Physical Location')
+        OR PH_ACCOUNT.record_type__c = 'Physical Location'
+       )
+
+LEFT JOIN ENT.[restaurant_onboarding_APAC_Email1_Post-AH] a on a.PH_accountID = PH_ACCOUNT.id and a.SF_accountID = SF_ACCOUNT.id and a.opportunityID = OPPORTUNITY.id and a.onboardingId = ONBOARDING.id
+       
+WHERE OPPORTUNITY.StageName = 'Closed Won'
+AND OPPORTUNITY."Type" NOT IN ('Re-Negotiation', 'Upsell')
+  AND PH_ACCOUNT.Account_Status__c	= 'Onboarding'
+AND PH_ACCOUNT.Account_Sub_Status__c != 'Onboarding Canceled'
+AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+AND SF_ACCOUNT.business_line__c IS NULL
+AND SF_ACCOUNT.email__c IS NOT NULL
+AND (
+    (PH_ACCOUNT.Service_Country__c IN ('Japan', 'Taiwan') AND PH_ACCOUNT.Named_Account__c NOT IN ('Enterprise', 'Strategic') Hong Kong Opt-Out - GCRM-65908
+     )
+    OR
+    (PH_ACCOUNT.Service_Country__c = 'Sri Lanka' AND PH_ACCOUNT.Named_Account__c != 'Grocery')
+)
+AND PH_ACCOUNT.Service_Country__c NOT IN ('Hong Kong') Hong Kong Opt-Out - GCRM-65908
+    AND ONBOARDING.UUID_Generated_Date__c > dateadd(hh,-72,getdate())
+    
+    AND a.PH_accountID IS NULL AND a.SF_accountID IS NULL AND a.opportunityID IS NULL AND a.onboardingId IS NULL */
