@@ -1,0 +1,41 @@
+SELECT pla.primary_contact_email__c as email
+    , pla.id as physical_account_id
+    , sla.id as storefront_account_id
+    , pla.parentid
+    , sla.name as store_name
+    , pla.BillingStreet
+    , pla.BillingCity
+    , pla.BillingState
+    , pla.BillingPostalCode
+    , pla.BillingCountry
+    , t.country_id__c
+    , t.city_id__c
+    , 'APAC' AS Region__c
+    , pla.Account_Status__c as Account_Status
+    , pla.Account_Sub_Status__c as Account_Sub_Status
+    , dm.first_visible_timestamp_local
+    , pla.Preferred_Language__c
+    , pla.Point_of_Sale_System__c
+    , dm.fulfillment_types
+    , pla.named_account__c as Segment
+    , sla.EATS_First_Trip_Date__c
+    , o.Selected_Package__c
+FROM ENT.[Opportunity_Salesforce_1] o
+JOIN ENT.[EATS_Onboarding__c_Salesforce_1] ob ON ob.opportunity__c = o.id
+LEFT JOIN ENT.Account_Salesforce_5 sla on sla.id = ob.Storefront__c and sla.record_type__c='Storefront'
+LEFT JOIN ENT.Account_Salesforce_5 pla on sla.parentid = pla.id and pla.record_type__c='Physical_Location'
+LEFT JOIN Master_Storefront dm on dm.uuid=sla.uuid__c
+INNER JOIN ENT.[Territory__c_Salesforce] t on t.id = pla.Territory__c
+LEFT JOIN [VnFT APAC Log] l ON l.email = pla.primary_contact_email__c AND l.physical_account_id = pla.id AND l.storefront_account_id = sla.id
+WHERE (
+    (pla.Account_Status__c = 'Active' AND pla.Account_Status_Change_Date__c >= DATEADD(dd,-3,GETDATE()))
+    OR
+    dm.first_visible_timestamp_local >= DATEADD(dd,-3,GETDATE())
+)
+AND sla.EATS_First_Trip_Date__c IS NULL
+AND pla.named_account__c IN ('SMB','Mid-Market','Enterprise')
+AND t.country_id__c in (194,163,195)
+AND dm.fulfillment_types NOT LIKE '%OVER_THE_TOP%'
+AND pla.RE_Business_Category__c NOT IN ('Alcohol','Convenience','Grocery','Grocery & Specialty Foods','Health and Pharmacy','Pharmacy')
+AND sla.type NOT IN ('Virtural Restaurant', 'Virtual Restaurant','Virtual Restaurant','Virtual Restuarant','Virtual Resturant')
+AND l.email IS NULL
