@@ -1,0 +1,57 @@
+SELECT DISTINCT
+    PH_ACCOUNT.id AS PH_accountID,
+    SF_ACCOUNT.id AS SF_accountID,
+    OPPORTUNITY.id AS opportunityID,
+    ONBOARDING.id AS onboardingId
+FROM ENT.Opportunity_Salesforce_1 OPPORTUNITY
+JOIN ENT.EATS_Onboarding__c_Salesforce_1 ONBOARDING 
+       ON ONBOARDING.opportunity__c = OPPORTUNITY.id
+
+JOIN ENT.Account_Salesforce_5 SF_ACCOUNT 
+       ON SF_ACCOUNT.id = ONBOARDING.storefront__c
+       AND (
+           SF_ACCOUNT.type in ('Brick & Mortar')
+        OR SF_ACCOUNT.record_type__c = 'Storefront'
+       )
+
+JOIN ENT.Account_Salesforce_5 PH_ACCOUNT
+       ON PH_ACCOUNT.id = OPPORTUNITY.accountid
+       AND (
+           PH_ACCOUNT.type IN ('Physical Location')
+        OR PH_ACCOUNT.record_type__c = 'Physical Location'
+       )
+       
+LEFT JOIN ent.[EMEA_restaurant_POS_onboarding_Email1_Post-AH] a on a.PH_accountID = PH_ACCOUNT.id and a.SF_accountID = SF_ACCOUNT.id and a.opportunityID = OPPORTUNITY.id and a.onboardingId = ONBOARDING.id       
+LEFT JOIN ent.[restaurant_onboarding_EMEA_Email1_Post-AH] b on b.PH_accountID = PH_ACCOUNT.id and b.SF_accountID = SF_ACCOUNT.id and b.opportunityID = OPPORTUNITY.id and b.onboardingId = ONBOARDING.id       
+       
+WHERE OPPORTUNITY.StageName = 'Closed Won'
+AND ((PH_ACCOUNT.service_Country__c != 'South Africa' AND PH_ACCOUNT.Account_Status__c = 'Onboarding') OR
+
+      (PH_ACCOUNT.service_Country__c = 'South Africa' AND PH_ACCOUNT.Account_Status__c IN ('Active','Onboarding')))
+  AND PH_ACCOUNT.Account_Sub_Status__c != 'Onboarding Canceled'
+  AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+  and SF_ACCOUNT.UUID__c IS NOT NULL
+  and (((PH_ACCOUNT.service_Country__c = 'Netherlands' and PH_ACCOUNT.Named_Account__c = 'SMB' and (PH_ACCOUNT.Point_of_Sale_System__c IS NULL or PH_ACCOUNT.Point_of_Sale_System__c NOT IN ('CashDesk', 'Simply Delivery', 'S4D', 'Deliverect-Lightspeed', 'Deliverect-Untill', 'Deliverect-Countr', 'Deliverect-Rocketship', 'Deliverect-Trivec', 'Deliverect-iKentoo', 'Deliverect-Revo', 'Deliverect-NCR', 'Vectron', 'Foodyx', 'Andromeda')))) or PH_ACCOUNT.service_Country__c != 'Netherlands')
+ and (((PH_ACCOUNT.service_Country__c = 'Germany' and PH_ACCOUNT.Named_Account__c = 'SMB' and (PH_ACCOUNT.Point_of_Sale_System__c IS NULL or PH_ACCOUNT.Point_of_Sale_System__c NOT IN ('Deliverect-Lightspeed', 'Deliverect-Untill', 'Deliverect-Countr', 'Deliverect-Rocketship', 'Deliverect-Trivec', 'Deliverect-iKentoo', 'Deliverect-Revo', 'Deliverect-NCR', 'Menuapp', 'Simply delivery', 'ExpertOrder', 'WinOrder', 'Otter', 'Lineten', 'Deliverect-CapInfo', 'Deliverect-Gastrofix', 'Deliverect-Guestline', 'Deliverect-Hippos', 'Deliverect-Hypersoft', 'Deliverect-Micros RES3700', 'Deliverect-Micros Simphony', 'Deliverect-TCPOS')))) or PH_ACCOUNT.service_Country__c != 'Germany')
+  AND ((PH_ACCOUNT.service_Country__c = 'Spain' and (PH_ACCOUNT.OTT_Status__c IS NULL OR PH_ACCOUNT.OTT_Status__c != 'OTT Target')) OR (PH_ACCOUNT.service_Country__c != 'Spain'))
+  
+ AND ((PH_ACCOUNT.Named_Account__c IS NULL AND PH_ACCOUNT.service_Country__c in ('United Kingdom', 'France', 'South Africa', 'Spain', 'Portugal', /*'Italy'*/ 'South Africa', 'Poland', 'Ireland', 'Belgium', 'Switzerland', 'Reunion', 'Netherlands', 'Sweden', 'Kenya', 'Germany','Guadeloupe','Martinique'))
+
+  OR (PH_ACCOUNT.Named_Account__c = 'SMB'  AND PH_ACCOUNT.service_Country__c in ('United Kingdom', 'France', 'South Africa', 'Spain', 'Portugal', /*'Italy'*/ 'South Africa', 'Poland', 'Ireland', 'Belgium', 'Switzerland', 'Reunion', 'Netherlands', 'Sweden', 'Kenya', 'Germany','Guadeloupe','Martinique'))
+
+  OR (PH_ACCOUNT.Named_Account__c = 'Mid-Market' AND PH_ACCOUNT.service_Country__c in ('United Kingdom', 'Ireland', 'Spain')) 
+          OR (PH_ACCOUNT.Named_Account__c = 'Enterprise' 
+              AND PH_ACCOUNT.service_Country__c in ('Spain', /*'Italy'*/ 'Portugal', 'Poland', 'Netherlands', 'France', 'Belgium', 'Switzerland', 'Reunion', 'Germany','Guadeloupe','Martinique'))
+   OR (PH_ACCOUNT.Named_Account__c = 'Strategic' 
+        AND PH_ACCOUNT.service_Country__c in (/*'Italy'*/ 'Spain','Netherlands', 'Germany'))
+   OR (PH_ACCOUNT.Named_Account__c = 'Strategic' 
+        AND PH_ACCOUNT.Tiers__c != 'Tier 1' 
+        AND PH_ACCOUNT.service_Country__c in ('France', 'Belgium', 'Switzerland', 'Reunion','Guadeloupe','Martinique'))
+    OR (PH_ACCOUNT.Named_Account__c in ('Grocery', 'Convenience', 'Liquor Store', 'Pharmacy') 
+        AND PH_ACCOUNT.service_Country__c in ('United Kingdom', 'France', 'South Africa', 'Spain', 'Portugal', /*'Italy'*/ 'South Africa', 'Poland', 'Ireland', 'Belgium', 'Switzerland', 'Reunion', 'Netherlands', 'Germany','Guadeloupe','Martinique'))
+        )
+AND OPPORTUNITY.Uet_Closed_Won_Date_Time__C > dateadd(hh,-72,getdate())
+
+AND a.PH_accountID IS NULL AND a.SF_accountID IS NULL AND a.opportunityID IS NULL AND a.onboardingId IS NULL
+
+AND b.PH_accountID IS NULL AND b.SF_accountID IS NULL AND b.opportunityID IS NULL AND b.onboardingId IS NULL
