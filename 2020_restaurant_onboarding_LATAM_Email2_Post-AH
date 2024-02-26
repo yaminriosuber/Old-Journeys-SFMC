@@ -1,0 +1,39 @@
+SELECT DISTINCT
+    PH_ACCOUNT.id AS PH_accountID,
+    SF_ACCOUNT.id AS SF_accountID,
+    OPPORTUNITY.id AS opportunityID,
+    ONBOARDING.id AS onboardingId
+FROM ENT.Opportunity_Salesforce_1 OPPORTUNITY
+JOIN ENT.EATS_Onboarding__c_Salesforce_1 ONBOARDING 
+       ON ONBOARDING.opportunity__c = OPPORTUNITY.id
+
+JOIN ENT.Account_Salesforce_5 SF_ACCOUNT 
+       ON SF_ACCOUNT.id = ONBOARDING.storefront__c
+       AND (
+           SF_ACCOUNT.type in ('Brick & Mortar')
+        OR SF_ACCOUNT.record_type__c = 'Storefront'
+       )
+
+JOIN ENT.Account_Salesforce_5 PH_ACCOUNT
+       ON PH_ACCOUNT.id = OPPORTUNITY.accountid
+       AND (
+           PH_ACCOUNT.type IN ('Physical Location')
+        OR PH_ACCOUNT.record_type__c = 'Physical Location'
+       )
+       
+LEFT JOIN ENT.[restaurant_onboarding_LATAM_Email2_Post-AH] a on a.PH_accountID = PH_ACCOUNT.id and a.SF_accountID = SF_ACCOUNT.id and a.opportunityID = OPPORTUNITY.id and a.onboardingId = ONBOARDING.id
+       
+WHERE OPPORTUNITY.StageName = 'Closed Won'
+  AND OPPORTUNITY."Type" NOT IN ('Pilot', 'Pickup Pilot')
+  AND PH_ACCOUNT.Account_Status__c	= 'Onboarding'
+  AND PH_ACCOUNT.Account_Sub_Status__c != 'Onboarding Canceled'
+  AND SF_ACCOUNT.Business_Line__c IS NULL
+  AND SF_ACCOUNT.EATS_First_Trip_Date__c IS NULL
+  AND PH_ACCOUNT.Service_Country__c IN ('Italy','Chile','Costa Rica','Dominican Republic','Ecuador','El Salvador','Guatemala','Mexico','Panama','Peru','México','Bogota') /*OptOut Bolivia and Brazil GCRM-63896*/
+  AND PH_ACCOUNT.Named_Account__c NOT IN ('Enterprise', 'Strategic')
+AND (
+    (ONBOARDING.Menu_Uploaded__c = 'True' AND ONBOARDING.Menu_Uploaded_Date__c > dateadd(hh,-72,getdate()))
+    or 
+    (ONBOARDING.Menu_Audited__c = 'True' AND ONBOARDING.Menu_Audited_Date__c > dateadd(hh,-72,getdate()))
+    )
+AND a.PH_accountID IS NULL AND a.SF_accountID IS NULL AND a.opportunityID IS NULL AND a.onboardingId IS NULL
