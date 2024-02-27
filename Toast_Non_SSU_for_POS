@@ -1,0 +1,75 @@
+select distinct    
+    op.closedate as cw_date
+    ,ob.id as Eats_Onboarding_ID
+    ,a2.id as AccountID
+    ,a2.name as Account_name
+    ,a1.uuid__c
+    ,ob.Delay_Detailed_Comments__c
+    ,op.primary_contact_email__c
+    ,ob.CRM_Email_Activity_Log__c 
+    ,a1.Email__c
+    ,a1.Phone
+    ,a1.AccountCaseSafeID__c
+    ,a1.Business_Line__c
+    ,getdate() as mc_created_date 
+    ,op.StageName
+    ,op.Type
+    ,cast(concat(FORMAT(GETDATE(),'MM/dd/yy'),' POS Toast Non SSU') as nvarchar(100)) as "CRM Push"
+    ,op.important_handoff_information__c
+    ,a2.tax_account_number__c
+FROM ent.EATS_Onboarding__c_Salesforce_1 ob
+LEFT JOIN ent.Opportunity_Salesforce_1 op on op.id=ob.opportunity__c
+LEFT JOIN ent.Account_Salesforce_5 a1 on ob.storefront__c=a1.id
+LEFT JOIN ent.Account_Salesforce_5 a2 on ob.account__c=a2.id
+WHERE 
+
+    /*ob*/
+    (ob.CRM_Email_Activity_Log__c not like '%Comm Sent: Welcome%'
+    and ob.CRM_Email_Activity_Log__c not like '%Omit Comms%'
+    and ob.CRM_Email_Activity_Log__c not like '%welcome%'
+    and ob.CRM_Email_Activity_Log__c not like '%t.uber%'
+    and ob.CRM_Email_Activity_Log__c not like '%GL_Rest_OB%'
+    and ob.CRM_Email_Activity_Log__c not like '%Live%'
+    and ob.CRM_Email_Activity_Log__c not like '%Toast%'
+    or ob.CRM_Email_Activity_Log__c is null)
+    and (ob.Delay_Detailed_Comments__c not like '%ENT wavelaunch%' or ob.Delay_Detailed_Comments__c is null)
+
+    /*op*/
+    and op.StageName='Closed Won'
+    and op.Type in ('Additional Location','New Business')
+    and (op.important_handoff_information__c not like '%nocomm%'
+    and op.important_handoff_information__c not like '%nocomm1%'
+    and op.important_handoff_information__c not like '%nocomm2%'
+    and op.important_handoff_information__c not like '%nocomm3%'
+    or op.important_handoff_information__c is null)
+    AND CAST(op.CloseDate AS DATE) > DATEADD(DAY, -30, GETDATE())
+    AND (op.x3p_variant__c != 'Pick, Pack, Pay' or op.x3p_variant__c is null)
+    /*a1 storefront level*/
+    and a1.uuid__c is not null
+    and (a1.Type not like '%OTT%' or a1.Type is null)
+    and a1.Business_Line__c is null
+    and a1.AccountCaseSafeID__c is not null
+    /*a2*/
+    and a2.named_account__c in  ('SMB','Strategic','Enterprise')
+    and a2.account_status__c='Onboarding'
+    and a2.service_country__c in ('Canada','United States')
+    and (a2.billingcountry!='Puerto Rico' or a2.billingcountry is null)
+    and (a2.RE_Service_Area__c not in ('Gatineau','Montreal','Puerto Rico','Quebec City','San Juan','Sherbrooke','Trois-Rivieres') or a2.RE_Service_Area__c is null)
+    and (a2.preferred_language__c like '%english%' or a2.preferred_language__c is null)
+    and a2.name not like '%mcdonald%'
+    and a2.name not like '%starbucks%'
+    and a2.name not like '%7-eleven%'
+    and a2.name not like '%taco bell%'
+    and a2.name not like '%sugarfish%'
+    and a2.name not like '%kazunori%'
+    and a2.name not like '%hiho%'
+    and a2.name not like '%uovo%'
+    and a2.name not like '%howlin'' ray''s%'
+    and a2.name not like '%csv%'
+    and a2.name not like '%chipotle%'
+    and (a2.POS_System_if_other__c='Toast' or a2.Point_of_Sale_System__c='Toast')
+    and (a2.lead_source_detail__c not like '%ssupos_toast%'
+    and a2.lead_source_detail__c not like '%ssupos_clover%'
+    and a2.lead_source_detail__c not like '%ssupos_square%'
+    or a2.lead_source_detail__c is null)
+    and (a2.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or a2.Additional_Notes__c is null)
