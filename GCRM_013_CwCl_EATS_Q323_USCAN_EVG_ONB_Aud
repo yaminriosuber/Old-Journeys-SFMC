@@ -1,0 +1,92 @@
+SELECT  distinct 
+        op.id as OpportunityId
+        ,op.accountid
+        ,ga.record_type__c as Hierarchy_level
+        ,op.primary_contact_email__c
+        ,tr1.Country_id__c as country_id
+        ,tr1.city_id__c as city_id
+        ,op.StageName
+        ,op.LeadSource
+        ,st.name as Store_name
+        ,op.Closed_lost_reasons__c
+        ,CASE WHEN ga.Point_of_Sale_System__c IS NOT NULL THEN 'POS' ELSE 'Non-POS' END AS pos_system
+        ,case when op.Scheduled_Go_Live_Date__c is not null then concat(cast(month(op.Scheduled_Go_Live_Date__c) as varchar),'/', cast(day(op.Scheduled_Go_Live_Date__c) as varchar),'/', cast(year(op.Scheduled_Go_Live_Date__c) as varchar)) else null end as Scheduled_Go_Live_Date__c
+        ,op.SSU_Contract_PDF__c
+        ,CASE WHEN ass.name='BYOD' THEN 'BYOD' 
+            WHEN ass.name in ('Tablet - Wifi','Tablet - Data') THEN 'Tablet' ELSE ass.name END as Tablet_type
+        ,Case when op.initial_photo_schedule_link__c is null then 'False'
+                when op.initial_photo_schedule_link__c not like '%stock%' then 'True' end as Photoshoot
+        FROM Opportunity_2 as op
+        LEFT JOIN Account_2 ga ON op.accountid=ga.id
+        LEFT JOIN Account_2  st ON op.id = st.originated_opportunity__c and st.record_type__c='Storefront'
+        LEFT JOIN Account_2  pl ON st.parentid = pl.id and pl.record_type__c='Physical_Location'
+        LEFT JOIN Asset_2 ass on op.id=ass.opportunity__c
+        LEFT JOIN ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = op.UE_Service_Country__c AND tr1.[City_Name__c] = pl.City_Name__c
+        LEFT JOIN [USCAN_Opportunity_CW_CL] Logv1 on Logv1.opp_id__c=op.id
+        LEFT JOIN GCRM_013_CwCl_EATS_Q323_USCAN_EVG_ONB_Log log on log.OpportunityId=op.id
+        WHERE op.StageName ='Closed Won'
+            AND CAST(op.CloseDate AS DATE) >= cast(DATEADD(DAY, -7, GETDATE()) as date)
+            AND op.LeadSource IN (
+                'Inbound: Self Sign-Up'
+                ,'Inbound: Website'
+                ,'Inbound: Other'
+                ,'Inbound: Phone'
+                )
+            AND op.UE_Service_Country__c IN ('United States','Canada')
+            and op.type IN ('New Business','Additional Location')
+            AND op.Sub_Type__c!= 'Direct'
+            AND (ga.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or ga.Additional_Notes__c is null)
+            AND ga.Named_Account__c='SMB'
+            AND ga.re_business_category__c= 'Restaurant & Takeout'
+            AND ass.name in ('Tablet - Wifi','Tablet - Data','BYOD')
+            AND op.UE_Service_Country__c is not null
+            AND Logv1.opp_id__c IS NULL
+            AND log.OpportunityId IS NULL
+UNION ALL
+
+SELECT  distinct 
+        op.id as OpportunityId
+        ,op.accountid
+        ,ga.record_type__c as Hierarchy_level
+        ,op.primary_contact_email__c
+        ,tr1.Country_id__c as country_id
+        ,tr2.city_id__c as city_id
+        ,op.StageName
+        ,op.LeadSource
+        ,case when st.name is null then replace(replace(ga.name,'[SMB Parent]',''),'[Parent]','') else st.name end as Store_name
+        ,op.Closed_lost_reasons__c
+        ,CASE WHEN pl.Point_of_Sale_System__c IS NOT NULL OR pl.pos_system_if_other__c IS NOT NULL THEN 'POS' ELSE 'Non-POS' END AS pos_system
+        ,case when op.Scheduled_Go_Live_Date__c is not null then concat(cast(month(op.Scheduled_Go_Live_Date__c) as varchar),'/', cast(day(op.Scheduled_Go_Live_Date__c) as varchar),'/', cast(year(op.Scheduled_Go_Live_Date__c) as varchar)) else null end as Scheduled_Go_Live_Date__c
+        ,op.SSU_Contract_PDF__c
+        ,'' as Tablet_type
+        ,'' as Photoshoot
+        FROM Opportunity_2 as op
+        LEFT JOIN Account_2 ga ON op.accountid=ga.id
+        LEFT JOIN Account_2 st ON op.id = st.originated_opportunity__c and st.record_type__c='Storefront'
+        LEFT JOIN Account_2 pl ON st.parentid = pl.id and pl.record_type__c='Physical_Location'
+        LEFT JOIN Asset_2 ass on op.id=ass.opportunity__c
+        LEFT JOIN ENT.[Territory__c_Salesforce] tr1 ON tr1.[Country__c] = op.UE_Service_Country__c and Country_id__c is not null
+        LEFT JOIN ENT.[Territory__c_Salesforce] tr2 ON tr2.[City_Name__c] = pl.City_Name__c and tr2.city_id__c is not null
+        LEFT JOIN [USCAN_Opportunity_CW_CL] Logv1 on Logv1.opp_id__c=op.id
+        LEFT JOIN GCRM_013_CwCl_EATS_Q323_USCAN_EVG_ONB_Log log on log.OpportunityId=op.id
+        WHERE op.StageName ='Closed Lost'
+            AND (op.Closed_Lost_Reasons__c = 'Duplicate' AND op.Closed_Lost_Reason_Sub__c = 'Duplicate Account on SFDC'
+                    OR (op.Closed_Lost_Reasons__c = 'Unable to Determine Reason' AND op.Closed_Lost_Reason_Sub__c = 'Unreachable')
+                    OR op.Closed_Lost_Reasons__c in ('Uninterested in Marketplace / Delivery Service','Competition','Poor Qualification'))    
+            AND op.LeadSource IN ('Inbound Self Sign-Up','Inbound: Self Sign-Up','Inbound: Website')
+            AND CAST(op.CloseDate AS DATE) >= cast(DATEADD(DAY, -7, GETDATE()) as date)
+            AND op.LeadSource IN (
+                'Inbound: Self Sign-Up'
+                ,'Inbound: Website'
+                ,'Inbound: Other'
+                ,'Inbound: Phone'
+                )
+            AND op.UE_Service_Country__c IN ('United States','Canada')
+            and op.type IN ('New Business','Additional Location')
+            AND op.Sub_Type__c!= 'Direct'
+            AND (ga.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or ga.Additional_Notes__c is null)
+            AND ga.Named_Account__c='SMB'
+            AND ga.re_business_category__c= 'Restaurant & Takeout'
+            AND op.UE_Service_Country__c is not null
+            AND Logv1.opp_id__c IS NULL
+            AND log.opportunityid IS NULL
