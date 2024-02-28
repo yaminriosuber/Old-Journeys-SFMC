@@ -1,0 +1,77 @@
+SELECT distinct
+    GetDate() As mc_created_date,
+    op.closedate AS cw_date,
+    ob.id AS Eats_Onboarding_ID,
+    a1.id AS AccountID, 
+    a1.name AS Account_name,
+    a1.uuid__c,
+    ob.Delay_Detailed_Comments__c,
+    ob.CreatedDate AS Created_Date,
+    op.primary_contact_email__c,
+    ob.CRM_Email_Activity_Log__c,
+    a1.Email__c,
+    a1.Phone AS Phone,
+    a1.AccountCaseSafeID__c,
+    ob.UUID_Generated_Date__c,
+    a1.Business_Line__c,    
+    op.StageName,
+    op.Type,
+    a1.Type as Type_storefront,
+    a1.eats_first_trip_date__c,
+    a2.POS_System_if_other__c,
+    a2.service_country__c,
+    a2.account_sub_status__c,
+    a2.account_status__c,
+    a2.Point_of_Sale_System__c,
+    ob.account__c as account_id_ob,
+    a1.id as storefront_id_ac,
+    ob.storefront__c as storefront_id_ob,
+    a2.id as account_id_ac,
+    a2.parentid as parentid_ac,
+    ob.opportunity__c as opportunity_id_ob,
+    op.id as opportunity_id_op,
+    op.UE_Service_Country__c
+FROM Onboarding_2 ob
+LEFT JOIN Opportunity_2 op on op.id=ob.opportunity__c
+LEFT JOIN Account_2 a1 on ob.storefront__c=a1.id
+LEFT JOIN Account_2 a2 on ob.account__c=a2.id
+where 1=1
+    /*ob*/
+    AND (ob.CRM_Email_Activity_Log__c IS NULL or ob.CRM_Email_Activity_Log__c not like '%manual send%')
+    AND (ob.Delay_Detailed_Comments__c NOT LIKE '%wavelaunch%' or ob.Delay_Detailed_Comments__c NOT LIKE '%french%' or ob.Delay_Detailed_Comments__c  is null) 
+    AND ob.UUID_Generated_Date__c IS NOT NULL
+    /*op*/
+    AND CAST(op.CloseDate AS DATE) >= cast(DATEADD(DAY, -21, GETDATE()) as date)
+    AND op.StageName='Closed Won'
+    AND op.Type IN ('Additional Location','New Business')
+    AND (op.UE_Service_Country__c in ('Canada','United States') OR a2.service_country__c in ('Canada','United States'))
+    AND op.primary_contact_email__c IS NOT null    
+    /*a1 storefront level
+    AND a1.uuid__c IS NOT NULL */
+    AND (a1.Type NOT LIKE '%OTT%' or a1.Type is null)
+    AND a1.eats_first_trip_date__c IS NULL
+    AND a1.Email__c is not null
+    AND a1.name NOT LIKE '%SUGARFISH%'
+    AND a1.name NOT LIKE '%Hiho%'
+    AND a1.name NOT LIKE '%KazuNori%'
+    AND a1.name NOT LIKE '%UOVO%'
+    AND a1.name NOT LIKE '%Howlin'' Ray''s%'
+    AND a1.name NOT LIKE '%McDonald%'
+    AND a1.name NOT LIKE '%Starbucks%'
+    AND a1.name NOT LIKE '%7-Eleven%'
+    AND a1.name NOT LIKE '%Taco Bell%'
+    AND a1.name NOT LIKE '%Philly''s Best - San Dimas%'
+    AND a1.name NOT LIKE '%Philly''s Best - Long Beach%'
+    AND a1.name NOT LIKE '%Philly''s Best - Mira Loma%'
+    AND a1.name NOT LIKE '%Philly''s Best - Placentia%'
+    AND a1.name NOT LIKE '%Philly''s Best - Santa Ana-Tustin%'
+    AND a1.name NOT LIKE '%Philly''s Best - Santa Ana Marketplace%'
+    AND a1.name NOT LIKE '%Philly''s Best - Rancho Santa Margarita%'
+    AND a1.name NOT LIKE '%Philly''s Best - Chino%'
+    AND a1.Business_Line__c IS NULL
+    /*a2*/
+    AND a2.POS_System_if_other__c IS NULL
+    AND (a2.account_sub_status__c NOT IN ('Canceled','Onboarding Canceled','On Hold') or a2.account_sub_status__c is null)
+    AND a2.account_status__c='Onboarding'
+    AND a2.Point_of_Sale_System__c IS NULL
+    AND (a2.Additional_Notes__c not like '%EXCLUDE_COMMS_DOMINOS%' or a2.Additional_Notes__c is null)
