@@ -1,0 +1,22 @@
+SELECT DISTINCT
+  x.PH_accountID,
+  x.SF_accountID,
+  x.opportunityID,
+  x.onboardingId,
+  x.EmailAddress as email_address
+FROM (
+      SELECT EMEA.PH_accountID as PH_accountID,
+          EMEA.SF_accountID as SF_accountID,
+          EMEA.opportunityID,
+          EMEA.onboardingId,
+          OPPORTUNITY.Primary_Contact_Email__c AS EmailAddress
+      FROM ENT.[restaurant_onboarding_EMEA_Email3_Post-AH] EMEA
+        LEFT JOIN ENT.Opportunity_Salesforce_1 OPPORTUNITY
+             ON EMEA.PH_accountID = OPPORTUNITY.AccountId AND EMEA.opportunityID = OPPORTUNITY.Id
+        WHERE OPPORTUNITY.Primary_Contact_Email__c IS NOT NULL
+
+     ) as x
+LEFT JOIN ENT.[restaurant_onboarding_Email3_tracking_Post-AH] a on a.PH_accountID = x.PH_accountID AND a.SF_accountID = x.SF_accountID AND a.opportunityID = x.opportunityID AND a.onboardingId = x.onboardingId AND a.email_address = x.EmailAddress
+LEFT JOIN GCRM_026_onboarding_Q423_EMEA_EVG_ONB_EM3_Log b on b.PH_accountID = x.PH_accountID AND b.SF_accountID = x.SF_accountID AND b.opportunityID = x.opportunityID AND b.onboardingId = x.onboardingId AND b.email_address = x.EmailAddress
+WHERE a.email_address IS NULL
+  AND b.onboardingId IS NULL
